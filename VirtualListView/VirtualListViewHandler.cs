@@ -97,36 +97,33 @@ public partial class VirtualListViewHandler : IVirtualListViewHandler
 		return previousSelections.Contains(new ItemPosition(sectionIndex, itemIndex));
 	}
 
-	ItemPosition[] previousSelections = Array.Empty<ItemPosition>();
+	HashSet<ItemPosition> previousSelections = [];
 
 	public static void MapSelectedItems(VirtualListViewHandler handler, IVirtualListView virtualListView)
 	{
 		if (handler is null)
 			return;
 
-		var newSelections = virtualListView?.SelectedItems ?? Array.Empty<ItemPosition>();
+		ISet<ItemPosition> newSelections = virtualListView?.SelectedItems ?? new HashSet<ItemPosition>();
 
 		if (virtualListView.SelectionMode == SelectionMode.None)
-			newSelections = Array.Empty<ItemPosition>();
+			newSelections = new HashSet<ItemPosition>();
 		else if (virtualListView.SelectionMode == SelectionMode.Single && newSelections.Count > 1)
-			newSelections = newSelections.Take(1).ToArray();
+			newSelections = newSelections.Take(1).ToHashSet();
 
-		// First deselect any previously selected items that aren't in the new set
-		foreach (var itemPosition in handler.previousSelections)
+		var changed = new HashSet<ItemPosition>(handler.previousSelections);
+		changed.SymmetricExceptWith(newSelections);
+		foreach (var itemPosition in changed)
 		{
-			if (!newSelections.Contains(itemPosition))
+			if (handler.previousSelections.Contains(itemPosition))
+				// Deselect any previously selected items that aren't in the new set
 				handler.PlatformUpdateItemSelection(itemPosition, false);
-		}
-
-		// Set all the new state selected to true
-		foreach (var itemPosition in newSelections)
-		{
-			if (!handler.previousSelections.Contains(itemPosition))
+			else 
+				// Set all the new state selected to true
 				handler.PlatformUpdateItemSelection(itemPosition, true);
 		}
-
 		// Keep track of the new state for next time it changes
-		handler.previousSelections = newSelections.ToArray();
+		handler.previousSelections = new HashSet<ItemPosition>(newSelections);
 	}
 
 	public static void MapIsHeaderVisible(VirtualListViewHandler handler, IVirtualListView virtualListView)

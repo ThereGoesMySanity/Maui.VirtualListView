@@ -22,7 +22,7 @@ public interface IVirtualListView : IView
 
 	SelectionMode SelectionMode { get; }
 
-	IList<ItemPosition> SelectedItems { get; set; }
+	ISet<ItemPosition> SelectedItems { get; set; }
 
 	ItemPosition? SelectedItem { get; set; }
 	

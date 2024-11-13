@@ -247,20 +247,20 @@ public partial class VirtualListView : View, IVirtualListView, IVirtualListViewS
 	}
 
 	public static readonly BindableProperty SelectedItemsProperty =
-		BindableProperty.Create(nameof(SelectedItems), typeof(IList<ItemPosition>), typeof(VirtualListView), Array.Empty<ItemPosition>(),
+		BindableProperty.Create(nameof(SelectedItems), typeof(ISet<ItemPosition>), typeof(VirtualListView), new HashSet<ItemPosition>(),
 			propertyChanged: (bindableObj, oldValue, newValue) =>
 			{
 				if (bindableObj is VirtualListView vlv
-					&& oldValue is IList<ItemPosition> oldSelection
-					&& newValue is IList<ItemPosition> newSelection)
+					&& oldValue is ISet<ItemPosition> oldSelection
+					&& newValue is ISet<ItemPosition> newSelection)
 				{
 					vlv.RaiseSelectedItemsChanged(oldSelection.ToArray(), newSelection.ToArray());
 				}
 			});
-	public IList<ItemPosition>? SelectedItems
+	public ISet<ItemPosition>? SelectedItems
 	{
-		get => (IList<ItemPosition>)GetValue(SelectedItemsProperty);
-		set => SetValue(SelectedItemsProperty, value ?? Array.Empty<ItemPosition>());
+		get => (ISet<ItemPosition>?)GetValue(SelectedItemsProperty);
+		set => SetValue(SelectedItemsProperty, value ?? new HashSet<ItemPosition>());
 	}
 
 	public static readonly BindableProperty SelectedItemProperty =
@@ -272,7 +272,7 @@ public partial class VirtualListView : View, IVirtualListView, IVirtualListViewS
 					if (newValue is null || newValue is not ItemPosition)
 						vlv.SelectedItems = null;
 					else if (newValue is ItemPosition p)
-						vlv.SelectedItems = new[] { p };
+						vlv.SelectedItems = new HashSet<ItemPosition>(){p};
 				}
 			});
 
@@ -294,11 +294,11 @@ public partial class VirtualListView : View, IVirtualListView, IVirtualListViewS
 		}
 		else if (SelectionMode == Maui.SelectionMode.Multiple)
 		{
-			var current = SelectedItems.ToList();
-			if (current.Contains(itemPosition))
+			if (SelectedItems?.Contains(itemPosition) ?? false)
 			{
+				var current = SelectedItems.ToHashSet();
 				current.Remove(itemPosition);
-				SelectedItems = current.ToArray();
+				SelectedItems = current;
 			}
 		}
 	}
@@ -314,10 +314,26 @@ public partial class VirtualListView : View, IVirtualListView, IVirtualListViewS
 		}
 		else if (SelectionMode == Maui.SelectionMode.Multiple)
 		{
-			var current = SelectedItems;
-			if (current is null || !current.Contains(itemPosition))
+			if (!(SelectedItems?.Contains(itemPosition) ?? false))
 			{
-				SelectedItems = (current ?? []).Append(itemPosition).ToArray();
+				var current = SelectedItems?.ToHashSet() ?? [];
+				current.Add(itemPosition);
+				SelectedItems = current;
+			}
+		}
+	}
+
+	public void SelectMany(IEnumerable<ItemPosition> items)
+	{
+		if (SelectionMode == Maui.SelectionMode.Multiple)
+		{
+			if (items.Any(i => !(SelectedItems?.Contains(i) ?? false)))
+			{
+				var current = (SelectedItems ?? Enumerable.Empty<ItemPosition>())
+						.Concat(items)
+						.ToHashSet();
+				
+				SelectedItems = current;
 			}
 		}
 	}
